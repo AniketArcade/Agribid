@@ -1,5 +1,7 @@
 // Demo data loaded on first run (and on "Reset demo data").
 // Demo login credentials live here so the prototype is explorable without signing up.
+import { MSP } from './constants';
+
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
 
@@ -53,37 +55,37 @@ export function seed() {
   const listings = [
     {
       id: 'p1', farmerId: 'f2', crop: 'Wheat', variety: 'HD-2967', quantity: 80, unit: 'Quintal',
-      basePrice: 2275, grade: 'A (Premium)', availableFrom: now, endsAt: now + 2 * DAY,
+      basePrice: 2275, grade: 'Grade A', availableFrom: now, endsAt: now + 2 * DAY,
       description: 'Freshly harvested, cleaned and sun-dried. Moisture under 12%.',
       status: 'open', createdAt: now - DAY,
       bids: [bid('bd1', 'b2', 2300, 20 * HOUR), bid('bd2', 'b1', 2340, 5 * HOUR)],
     },
     {
       id: 'p2', farmerId: 'f3', crop: 'Onion', variety: 'Red Nashik', quantity: 45, unit: 'Quintal',
-      basePrice: 1800, grade: 'B (Standard)', availableFrom: now, endsAt: now + 9 * HOUR,
+      basePrice: 1800, grade: 'Grade B', availableFrom: now, endsAt: now + 9 * HOUR,
       description: 'Medium size bulbs, stored in ventilated chawl.',
       status: 'open', createdAt: now - 2 * DAY,
       bids: [bid('bd3', 'b2', 1850, 30 * HOUR)],
     },
     {
       id: 'p3', farmerId: 'f1', crop: 'Groundnut', variety: 'GG-20', quantity: 30, unit: 'Quintal',
-      basePrice: 6300, grade: 'A (Premium)', availableFrom: now + 3 * DAY, endsAt: now + 4 * DAY,
+      basePrice: 6300, grade: 'Grade A', availableFrom: now + 3 * DAY, endsAt: now + 4 * DAY,
       description: 'Bold kernels, bagged in 40 kg jute bags.',
       status: 'open', createdAt: now - 3 * HOUR, bids: [],
     },
     {
       id: 'p4', farmerId: 'f2', crop: 'Paddy (Rice)', variety: 'PR-126', quantity: 120, unit: 'Quintal',
-      basePrice: 2183, grade: 'B (Standard)', availableFrom: now, endsAt: now + 3 * DAY,
+      basePrice: 2183, grade: 'Grade B', availableFrom: now, endsAt: now + 3 * DAY,
       description: 'Pickup from farm gate, loading labour available.',
       status: 'open', createdAt: now - 5 * HOUR, bids: [],
     },
     {
       id: 'p5', farmerId: 'f1', crop: 'Cotton', variety: 'Shankar-6', quantity: 25, unit: 'Quintal',
-      basePrice: 7020, grade: 'A (Premium)', availableFrom: now - 6 * DAY, endsAt: now - 2 * DAY,
+      basePrice: 7020, grade: 'Grade A', availableFrom: now - 6 * DAY, endsAt: now - 2 * DAY,
       description: 'Long staple, clean pick.', status: 'sold', createdAt: now - 7 * DAY,
       bids: [bid('bd4', 'b1', 7100, 5 * DAY), bid('bd5', 'b1', 7250, 3 * DAY)], acceptedBidId: 'bd5',
     },
   ];
 
-  return { users, listings };
+  return { users, listings, prices: { ...MSP } };
 }

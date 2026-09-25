@@ -4,7 +4,7 @@ import StatusBadge from '../components/StatusBadge';
 import {
   acceptBid, cancelListing, createListing, highestBid, listingStatus, useApp, userById,
 } from '../lib/store';
-import { CROPS, MSP, UNIT_FACTOR, UNITS } from '../lib/constants';
+import { CROPS, UNIT_FACTOR, UNITS } from '../lib/constants';
 import { dateStr, money, timeLeft } from '../lib/format';
 import useNow from '../lib/useNow';
 
@@ -64,6 +64,7 @@ export default function FarmerHome() {
       {tab === 'sell' ? (
         <SellForm
           farmer={me}
+          prices={db.prices}
           onCreated={() => {
             setFlash('Your crop has been submitted for authority approval — it will show up here once approved.');
             setTab('pending');
@@ -82,11 +83,11 @@ function Stat({ label, value }) {
   return <div className="card stat"><span>{label}</span><strong>{value}</strong></div>;
 }
 
-function SellForm({ farmer, onCreated }) {
+function SellForm({ farmer, prices, onCreated }) {
   const [f, setF] = useState(EMPTY);
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
-  const mspPerQuintal = f.crop && f.crop !== 'Other' ? MSP[f.crop] : null;
-  const basePrice = mspPerQuintal ? Math.round(mspPerQuintal * UNIT_FACTOR[f.unit]) : 0;
+  const pricePerQuintal = f.crop && f.crop !== 'Other' ? prices[f.crop] : null;
+  const basePrice = pricePerQuintal ? Math.round(pricePerQuintal * UNIT_FACTOR[f.unit]) : 0;
   const total = Number(f.quantity) * basePrice;
 
   function submit(e) {
@@ -127,7 +128,7 @@ function SellForm({ farmer, onCreated }) {
         </Field>
         <Field
           label={`Base price (₹ / ${f.unit.toLowerCase()})`}
-          value={mspPerQuintal ? money(basePrice) : 'Set by authority'}
+          value={pricePerQuintal ? money(basePrice) : 'Set by authority'}
           disabled
           hint="Fixed by the authority for this crop — not set by you."
         />
@@ -193,6 +194,7 @@ function FarmerListing({ l, now }) {
   const accepted = l.bids.find((b) => b.id === l.acceptedBidId);
   const winner = accepted && userById(accepted.buyerId);
   const decidable = status === 'open' || status === 'ended';
+  const canAccept = status === 'open';
 
   return (
     <article className="card listing-row">
@@ -231,23 +233,28 @@ function FarmerListing({ l, now }) {
                     <strong>{money(b.amount)}</strong>/{l.unit.toLowerCase()}
                     <span className="muted"> · {buyer?.traderName} · {buyer?.district}</span>
                   </span>
-                  <button
-                    className={`btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => {
-                      if (confirm(`Accept ${money(b.amount)}/${l.unit.toLowerCase()} from ${buyer?.traderName}? This closes bidding.`)) {
-                        acceptBid(l.id, b.id);
-                      }
-                    }}
-                  >
-                    Accept
-                  </button>
+                  {canAccept && (
+                    <button
+                      className={`btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => {
+                        if (confirm(`Accept ${money(b.amount)}/${l.unit.toLowerCase()} from ${buyer?.traderName}? This closes bidding.`)) {
+                          acceptBid(l.id, b.id);
+                        }
+                      }}
+                    >
+                      Accept
+                    </button>
+                  )}
                 </li>
               );
             })}
           </ul>
         </details>
       )}
-      {!bids.length && decidable && <p className="muted small">No bids yet.</p>}
+      {!bids.length && decidable && <p className="muted small">{status === 'ended' ? 'No bids were received.' : 'No bids yet.'}</p>}
+      {status === 'ended' && bids.length > 0 && (
+        <p className="muted small">Bidding has closed — the authority will approve the winning bid.</p>
+      )}
 
       {decidable && (
         <button className="link-btn danger" onClick={() => confirm('Withdraw this listing?') && cancelListing(l.id)}>

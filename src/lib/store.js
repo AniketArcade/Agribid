@@ -3,7 +3,7 @@
 // buyer in another; listings/bids sync between tabs via the `storage` event.
 import { useSyncExternalStore } from 'react';
 import { seed } from './seed';
-import { MIN_BID_INCREMENT } from './constants';
+import { MIN_BID_INCREMENT, MSP } from './constants';
 
 const DB_KEY = 'agribid:db:v1';
 const SESSION_KEY = 'agribid:session';
@@ -13,7 +13,8 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 function loadDb() {
   try {
     const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw);
+    // `prices` backfill covers data saved before crop pricing existed.
+    if (raw) return { prices: { ...MSP }, ...JSON.parse(raw) };
   } catch { /* fall through to seed */ }
   const fresh = seed();
   saveDb(fresh);
@@ -107,7 +108,8 @@ export function signup({ role, phone, password, ...profile }) {
 
 export function login({ role, phone, password }) {
   const user = db.users.find((u) => u.role === role && u.phone === phone.trim());
-  if (!user || user.password !== password) throw new Error('Incorrect phone number or password.');
+  const label = role === 'authority' ? 'Official ID' : 'phone number';
+  if (!user || user.password !== password) throw new Error(`Incorrect ${label} or password.`);
   loggedOut = false;
   setSession(user.id);
   return user;
@@ -122,6 +124,13 @@ export const justLoggedOut = () => loggedOut;
 
 export function updateUser(id, patch) {
   commit((d) => ({ ...d, users: d.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) }));
+}
+
+// ---------- crop pricing ----------
+
+/** Authority-set base price (₹ per quintal) for a crop. */
+export function setCropPrice(crop, pricePerQuintal) {
+  commit((d) => ({ ...d, prices: { ...d.prices, [crop]: Number(pricePerQuintal) } }));
 }
 
 // ---------- listings & bids ----------
@@ -141,7 +150,8 @@ export function createListing(farmerId, data) {
 /** Authority approves a pending listing, assigns its grade, and starts the bidding clock. */
 export function approveListing(listingId, grade) {
   updateListing(listingId, (l) => ({
-    ...l, status: 'open', grade, endsAt: Date.now() + Number(l.durationDays) * 24 * 3600 * 1000,
+    ...l, status: 'open', grade, approvedAt: Date.now(),
+    endsAt: Date.now() + Number(l.durationDays) * 24 * 3600 * 1000,
   }));
 }
 

@@ -15,7 +15,7 @@ export const CROPS = [
 
 export const UNITS = ['Quintal', 'Tonne', 'Kg'];
 
-export const GRADES = ['A (Premium)', 'B (Standard)', 'C (Fair)', 'Ungraded'];
+export const GRADES = ['Grade A', 'Grade B', 'Grade C'];
 
 // Authority-fixed base price, ₹ per quintal. Farmers cannot set their own — 'Other' crops
 // have no fixed price yet, so listings for them start at 0 until an authority sets one.
