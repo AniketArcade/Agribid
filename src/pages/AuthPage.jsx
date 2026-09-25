@@ -18,7 +18,7 @@ const EMPTY_BUYER = {
 export default function AuthPage({ role, mode }) {
   const { me } = useApp();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ phone: '', password: '', confirm: '', ...EMPTY_BUYER });
+  const [form, setForm] = useState({ phone: '', password: '', confirm: '', place: '', ...EMPTY_BUYER });
   const [error, setError] = useState('');
   // Set once this form logs someone in, so the "already logged in" redirect below
   // doesn't race the navigate() call in submit().
@@ -53,7 +53,8 @@ export default function AuthPage({ role, mode }) {
 
       submitted.current = true;
       if (role === 'farmer') {
-        signup({ role, phone: form.phone, password: form.password });
+        const { phone, password, name, place, state, district } = form;
+        signup({ role, phone, password, name, place, state, district });
         navigate('/farmer/onboarding');
       } else {
         const { phone, password, name, traderName, location, state, district, license, interests } = form;
@@ -71,7 +72,7 @@ export default function AuthPage({ role, mode }) {
   return (
     <div className="auth-shell">
       <header className="container landing-nav"><Logo /></header>
-      <div className={`card auth-card ${role === 'buyer' && isSignup ? 'auth-wide' : ''}`}>
+      <div className={`card auth-card ${(role === 'buyer' || role === 'farmer') && isSignup ? 'auth-wide' : ''}`}>
         <div className="auth-head">
           <span className="role-icon sm" aria-hidden>{icon}</span>
           <div>
@@ -80,7 +81,7 @@ export default function AuthPage({ role, mode }) {
               {isAuthority
                 ? 'Restricted to authorised officials.'
                 : isSignup && role === 'farmer'
-                  ? "Start with your mobile number — we'll ask for farm details next."
+                  ? "Tell us about yourself — we'll ask for farm details next."
                   : isSignup
                     ? 'Tell us about your trading business.'
                     : 'Welcome back.'}
@@ -89,6 +90,19 @@ export default function AuthPage({ role, mode }) {
         </div>
 
         <form onSubmit={submit} className="form">
+          {role === 'farmer' && isSignup && (
+            <>
+              <Field label="Full name" value={form.name} onChange={set('name')} required autoFocus />
+              <Field label="Village / locality" value={form.place} onChange={set('place')} required />
+              <div className="grid-2">
+                <Field label="State" as="select" value={form.state} onChange={set('state')} required>
+                  <option value="">Select state</option>
+                  {STATES.map((s) => <option key={s}>{s}</option>)}
+                </Field>
+                <Field label="District" value={form.district} onChange={set('district')} required />
+              </div>
+            </>
+          )}
           {role === 'buyer' && isSignup && (
             <>
               <div className="grid-2">

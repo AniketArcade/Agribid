@@ -132,10 +132,17 @@ function updateListing(id, fn) {
 
 export function createListing(farmerId, data) {
   const listing = {
-    id: uid(), farmerId, status: 'open', createdAt: Date.now(), bids: [], ...data,
+    id: uid(), farmerId, status: 'pending', createdAt: Date.now(), bids: [], ...data,
   };
   commit((d) => ({ ...d, listings: [listing, ...d.listings] }));
   return listing;
+}
+
+/** Authority approves a pending listing, assigns its grade, and starts the bidding clock. */
+export function approveListing(listingId, grade) {
+  updateListing(listingId, (l) => ({
+    ...l, status: 'open', grade, endsAt: Date.now() + Number(l.durationDays) * 24 * 3600 * 1000,
+  }));
 }
 
 export function placeBid(listingId, buyerId, amount) {

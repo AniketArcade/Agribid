@@ -1,5 +1,5 @@
 const LABELS = {
-  open: 'Bidding open', ended: 'Awaiting decision', sold: 'Sold', cancelled: 'Withdrawn',
+  pending: 'Pending approval', open: 'Bidding open', ended: 'Awaiting decision', sold: 'Sold', cancelled: 'Withdrawn',
   leading: 'You are leading', outbid: 'Outbid', won: 'Won', lost: 'Lost',
 };
 

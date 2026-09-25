@@ -82,30 +82,99 @@ function ProfileView({ me }) {
             ))}
           </div>
         </section>
+        <PaymentDetailsView me={me} />
       </>
     );
   }
   if (me.role === 'buyer') {
     return (
-      <section className="card">
-        <h2>Business details</h2>
-        <dl className="kv-grid">
-          <Row label="Trader / firm">{me.traderName}</Row>
-          <Row label="Contact person">{me.name}</Row>
-          <Row label="Phone">{me.phone}</Row>
-          <Row label="Address">{me.location}</Row>
-          <Row label="District">{me.district}</Row>
-          <Row label="State">{me.state}</Row>
-          <Row label="Licence / GSTIN">{me.license}</Row>
-          <Row label="Buys">{me.interests?.join(', ')}</Row>
-        </dl>
-      </section>
+      <>
+        <section className="card">
+          <h2>Business details</h2>
+          <dl className="kv-grid">
+            <Row label="Trader / firm">{me.traderName}</Row>
+            <Row label="Contact person">{me.name}</Row>
+            <Row label="Phone">{me.phone}</Row>
+            <Row label="Address">{me.location}</Row>
+            <Row label="District">{me.district}</Row>
+            <Row label="State">{me.state}</Row>
+            <Row label="Licence / GSTIN">{me.license}</Row>
+            <Row label="Buys">{me.interests?.join(', ')}</Row>
+          </dl>
+        </section>
+        <PaymentDetailsView me={me} />
+      </>
     );
   }
   return (
     <section className="card">
       <dl className="kv-grid"><Row label="Official ID">{me.phone}</Row></dl>
     </section>
+  );
+}
+
+function PaymentDetailsView({ me }) {
+  const [editing, setEditing] = useState(false);
+  const hasDetails = me.accountHolder || me.accountNumber || me.ifsc || me.bankName || me.upiId;
+
+  if (editing) return <PaymentDetailsForm me={me} onDone={() => setEditing(false)} />;
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Payment details</h2>
+        <button className="btn btn-outline btn-sm" onClick={() => setEditing(true)}>
+          {hasDetails ? 'Edit' : 'Add details'}
+        </button>
+      </div>
+      {hasDetails ? (
+        <dl className="kv-grid">
+          <Row label="Account holder">{me.accountHolder}</Row>
+          <Row label="Bank name">{me.bankName}</Row>
+          <Row label="Account number">{me.accountNumber && `•••• ${me.accountNumber.slice(-4)}`}</Row>
+          <Row label="IFSC code">{me.ifsc}</Row>
+          <Row label="UPI ID">{me.upiId}</Row>
+        </dl>
+      ) : (
+        <p className="muted small">No payment details added yet.</p>
+      )}
+    </section>
+  );
+}
+
+function PaymentDetailsForm({ me, onDone }) {
+  const [f, setF] = useState({
+    accountHolder: me.accountHolder || '',
+    bankName: me.bankName || '',
+    accountNumber: me.accountNumber || '',
+    ifsc: me.ifsc || '',
+    upiId: me.upiId || '',
+  });
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+
+  function save(e) {
+    e.preventDefault();
+    updateUser(me.id, f);
+    onDone();
+  }
+
+  return (
+    <form className="card form" onSubmit={save}>
+      <h2>Payment details</h2>
+      <div className="grid-2">
+        <Field label="Account holder name" value={f.accountHolder} onChange={set('accountHolder')} />
+        <Field label="Bank name" value={f.bankName} onChange={set('bankName')} />
+      </div>
+      <div className="grid-2">
+        <Field label="Account number" inputMode="numeric" value={f.accountNumber} onChange={set('accountNumber')} />
+        <Field label="IFSC code" placeholder="e.g. SBIN0001234" value={f.ifsc} onChange={set('ifsc')} />
+      </div>
+      <Field label="UPI ID (optional)" placeholder="e.g. name@bank" value={f.upiId} onChange={set('upiId')} />
+      <div className="row-actions">
+        <button type="button" className="btn btn-ghost" onClick={onDone}>Cancel</button>
+        <button className="btn btn-primary">Save changes</button>
+      </div>
+    </form>
   );
 }
 

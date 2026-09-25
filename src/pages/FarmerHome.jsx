@@ -4,7 +4,7 @@ import StatusBadge from '../components/StatusBadge';
 import {
   acceptBid, cancelListing, createListing, highestBid, listingStatus, useApp, userById,
 } from '../lib/store';
-import { CROPS, GRADES, UNITS } from '../lib/constants';
+import { CROPS, MSP, UNIT_FACTOR, UNITS } from '../lib/constants';
 import { dateStr, money, timeLeft } from '../lib/format';
 import useNow from '../lib/useNow';
 
@@ -12,8 +12,8 @@ import useNow from '../lib/useNow';
 const today = () => new Date().toLocaleDateString('en-CA');
 
 const EMPTY = {
-  crop: '', customCrop: '', variety: '', quantity: '', unit: 'Quintal', basePrice: '',
-  grade: GRADES[1], availableFrom: today(), durationDays: '3', description: '',
+  crop: '', customCrop: '', variety: '', quantity: '', unit: 'Quintal',
+  availableFrom: today(), durationDays: '3', description: '',
 };
 
 export default function FarmerHome() {
@@ -23,6 +23,8 @@ export default function FarmerHome() {
   const [flash, setFlash] = useState('');
 
   const mine = db.listings.filter((l) => l.farmerId === me.id);
+  const pending = mine.filter((l) => l.status === 'pending');
+  const listed = mine.filter((l) => l.status !== 'pending');
   const active = mine.filter((l) => ['open', 'ended'].includes(listingStatus(l, now)));
   const totalBids = active.reduce((n, l) => n + l.bids.length, 0);
   const sold = mine.filter((l) => l.status === 'sold');
@@ -49,8 +51,11 @@ export default function FarmerHome() {
 
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'sell'} onClick={() => setTab('sell')}>🌱 Sell a crop</button>
+        <button role="tab" aria-selected={tab === 'pending'} onClick={() => setTab('pending')}>
+          ⏳ Pending <span className="count">{pending.length}</span>
+        </button>
         <button role="tab" aria-selected={tab === 'lots'} onClick={() => setTab('lots')}>
-          📦 My listings <span className="count">{mine.length}</span>
+          📦 My listings <span className="count">{listed.length}</span>
         </button>
       </div>
 
@@ -59,10 +64,15 @@ export default function FarmerHome() {
       {tab === 'sell' ? (
         <SellForm
           farmer={me}
-          onCreated={() => { setFlash('Your crop is live — buyers can bid on it now.'); setTab('lots'); }}
+          onCreated={() => {
+            setFlash('Your crop has been submitted for authority approval — it will show up here once approved.');
+            setTab('pending');
+          }}
         />
+      ) : tab === 'pending' ? (
+        <PendingListings listings={pending} />
       ) : (
-        <MyListings listings={mine} now={now} />
+        <MyListings listings={listed} now={now} />
       )}
     </>
   );
@@ -75,7 +85,9 @@ function Stat({ label, value }) {
 function SellForm({ farmer, onCreated }) {
   const [f, setF] = useState(EMPTY);
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
-  const total = Number(f.quantity) * Number(f.basePrice);
+  const mspPerQuintal = f.crop && f.crop !== 'Other' ? MSP[f.crop] : null;
+  const basePrice = mspPerQuintal ? Math.round(mspPerQuintal * UNIT_FACTOR[f.unit]) : 0;
+  const total = Number(f.quantity) * basePrice;
 
   function submit(e) {
     e.preventDefault();
@@ -85,10 +97,9 @@ function SellForm({ farmer, onCreated }) {
       variety: f.variety.trim(),
       quantity: Number(f.quantity),
       unit: f.unit,
-      basePrice: Number(f.basePrice),
-      grade: f.grade,
+      basePrice,
       availableFrom: start,
-      endsAt: Date.now() + Number(f.durationDays) * 24 * 3600 * 1000,
+      durationDays: Number(f.durationDays),
       description: f.description.trim(),
     });
     setF(EMPTY);
@@ -114,28 +125,57 @@ function SellForm({ farmer, onCreated }) {
         <Field label="Unit" as="select" value={f.unit} onChange={set('unit')}>
           {UNITS.map((u) => <option key={u}>{u}</option>)}
         </Field>
-        <Field label={`Base price (₹ / ${f.unit.toLowerCase()})`} type="number" min="1" value={f.basePrice}
-          onChange={set('basePrice')} required hint="Lowest price you will accept." />
+        <Field
+          label={`Base price (₹ / ${f.unit.toLowerCase()})`}
+          value={mspPerQuintal ? money(basePrice) : 'Set by authority'}
+          disabled
+          hint="Fixed by the authority for this crop — not set by you."
+        />
       </div>
-      <div className="grid-3">
-        <Field label="Quality grade" as="select" value={f.grade} onChange={set('grade')}>
-          {GRADES.map((g) => <option key={g}>{g}</option>)}
-        </Field>
+      <div className="grid-2">
         <Field label="Available from" type="date" value={f.availableFrom} onChange={set('availableFrom')} required />
         <Field label="Bidding open for" as="select" value={f.durationDays} onChange={set('durationDays')}>
           {[1, 2, 3, 5, 7].map((d) => <option key={d} value={d}>{d} day{d > 1 ? 's' : ''}</option>)}
         </Field>
       </div>
+      <p className="muted small">Quality grade is assigned by the authority after inspection — it'll show up on your listing once set.</p>
       <Field label="Notes for buyers" as="textarea" rows={3} value={f.description} onChange={set('description')}
         placeholder="Moisture, storage, packing, pickup details…" />
 
       <div className="sell-foot">
         <span className="muted">
-          {total > 0 ? <>Minimum lot value: <strong>{money(total)}</strong></> : 'Fill in quantity and price to see lot value.'}
+          {total > 0 ? <>Minimum lot value: <strong>{money(total)}</strong></> : 'Select a crop and quantity to see lot value.'}
         </span>
-        <button className="btn btn-primary">Put up for bidding</button>
+        <button className="btn btn-primary">Submit for approval</button>
       </div>
     </form>
+  );
+}
+
+function PendingListings({ listings }) {
+  if (!listings.length) {
+    return <div className="card empty">Nothing waiting on approval. Use “Sell a crop” to list one.</div>;
+  }
+  return <div className="stack">{listings.map((l) => <PendingListing key={l.id} l={l} />)}</div>;
+}
+
+function PendingListing({ l }) {
+  return (
+    <article className="card listing-row">
+      <div className="listing-main">
+        <div className="listing-title">
+          <h3>{l.crop}{l.variety && <small> · {l.variety}</small>}</h3>
+          <StatusBadge status="pending" />
+        </div>
+        <p className="meta">
+          {l.quantity} {l.unit.toLowerCase()} · Base {money(l.basePrice)}/{l.unit.toLowerCase()} · Submitted {dateStr(l.createdAt)}
+        </p>
+        <p className="muted small">Waiting for the authority to review and grade this lot before it goes live.</p>
+      </div>
+      <button className="link-btn danger" onClick={() => confirm('Withdraw this listing?') && cancelListing(l.id)}>
+        Withdraw listing
+      </button>
+    </article>
   );
 }
 
