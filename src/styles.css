@@ -181,6 +181,8 @@ textarea { resize: vertical; }
 .badge-cancelled, .badge-lost { background: var(--surface-2); color: var(--muted); }
 .badge-outbid { background: var(--danger-soft); color: var(--danger); }
 .badge-pending { background: var(--accent-soft); color: #8a5a10; }
+.badge-purchase-pending { background: var(--accent-soft); color: #8a5a10; }
+.badge-purchase-done { background: var(--primary-soft); color: var(--primary); }
 
 /* ---------- marketplace ---------- */
 .filters { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; padding: 12px; margin-bottom: 16px; }
@@ -202,6 +204,15 @@ textarea { resize: vertical; }
 .bid-input { display: flex; align-items: center; gap: 8px; border: 1px solid var(--primary); border-radius: 10px; padding: 0 12px; }
 .bid-input input { border: 0; padding: 10px 0; font-weight: 700; font-size: 1.1rem; }
 .bid-input input:focus { outline: none; }
+
+/* ---------- modal ---------- */
+.modal-overlay { position: fixed; inset: 0; background: rgba(31, 42, 28, .45); display: grid; place-items: center; padding: 16px; z-index: 50; }
+.modal { width: 100%; max-width: 560px; max-height: calc(100vh - 32px); overflow-y: auto; display: grid; gap: 16px; }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.modal-close { background: none; border: 0; font-size: 1.1rem; color: var(--muted); line-height: 1; padding: 4px; }
+.modal-close:hover { color: var(--text); }
+.modal-body { display: grid; gap: 14px; }
+.modal-foot { border-top: 1px solid var(--border); padding-top: 14px; }
 
 /* ---------- profile ---------- */
 .profile { display: grid; gap: 16px; max-width: 820px; }

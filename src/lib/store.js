@@ -160,6 +160,11 @@ export function acceptBid(listingId, bidId) {
   updateListing(listingId, (l) => ({ ...l, status: 'sold', acceptedBidId: bidId, soldAt: Date.now() }));
 }
 
+/** Buyer confirms they've completed the purchase for a lot they won. */
+export function confirmPurchase(listingId) {
+  updateListing(listingId, (l) => ({ ...l, purchaseConfirmedAt: Date.now() }));
+}
+
 export function cancelListing(listingId) {
   updateListing(listingId, (l) => ({ ...l, status: 'cancelled' }));
 }

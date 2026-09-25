@@ -1,6 +1,7 @@
 const LABELS = {
   pending: 'Pending approval', open: 'Bidding open', ended: 'Awaiting decision', sold: 'Sold', cancelled: 'Withdrawn',
   leading: 'You are leading', outbid: 'Outbid', won: 'Won', lost: 'Lost',
+  'purchase-pending': 'Ready to buy', 'purchase-done': 'Purchase confirmed',
 };
 
 export default function StatusBadge({ status }) {

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import StatusBadge from '../components/StatusBadge';
-import { highestBid, listingStatus, minNextBid, placeBid, useApp, userById } from '../lib/store';
+import Modal from '../components/Modal';
+import { confirmPurchase, highestBid, listingStatus, minNextBid, placeBid, useApp, userById } from '../lib/store';
 import { CROPS, STATES } from '../lib/constants';
-import { dateStr, money, timeLeft } from '../lib/format';
+import { dateStr, dateTimeStr, money, timeLeft } from '../lib/format';
 import useNow from '../lib/useNow';
 
 const SORTS = {
@@ -23,6 +24,13 @@ export default function BuyerHome() {
 
   const open = db.listings.filter((l) => listingStatus(l, now) === 'open');
   const myBidLots = db.listings.filter((l) => l.bids.some((b) => b.buyerId === me.id));
+  const wonLots = db.listings.filter((l) => {
+    if (listingStatus(l, now) !== 'sold') return false;
+    const accepted = l.bids.find((b) => b.id === l.acceptedBidId);
+    return accepted?.buyerId === me.id;
+  });
+  const pendingWonLots = wonLots.filter((l) => !l.purchaseConfirmedAt);
+  const purchaseHistory = wonLots.filter((l) => l.purchaseConfirmedAt);
 
   const results = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -54,6 +62,12 @@ export default function BuyerHome() {
         <button role="tab" aria-selected={tab === 'bids'} onClick={() => setTab('bids')}>
           🔨 My bids <span className="count">{myBidLots.length}</span>
         </button>
+        <button role="tab" aria-selected={tab === 'won'} onClick={() => setTab('won')}>
+          🏆 Won lots <span className="count">{pendingWonLots.length}</span>
+        </button>
+        <button role="tab" aria-selected={tab === 'history'} onClick={() => setTab('history')}>
+          🧾 Purchase history <span className="count">{purchaseHistory.length}</span>
+        </button>
       </div>
 
       {tab === 'market' ? (
@@ -80,8 +94,12 @@ export default function BuyerHome() {
             <div className="card empty">No open lots match your filters.</div>
           )}
         </>
-      ) : (
+      ) : tab === 'bids' ? (
         <MyBids lots={myBidLots} me={me} now={now} />
+      ) : tab === 'won' ? (
+        <WonLots lots={pendingWonLots} />
+      ) : (
+        <PurchaseHistory lots={purchaseHistory} />
       )}
     </>
   );
@@ -95,6 +113,7 @@ function LotCard({ l, me, now }) {
   const [amount, setAmount] = useState('');
   const [bidding, setBidding] = useState(false);
   const [error, setError] = useState('');
+  const [details, setDetails] = useState(false);
   const unit = l.unit.toLowerCase();
   const endingSoon = l.endsAt - now < 12 * 3600 * 1000;
 
@@ -136,6 +155,8 @@ function LotCard({ l, me, now }) {
 
       {l.description && <p className="lot-desc">{l.description}</p>}
 
+      <button type="button" className="link-btn" onClick={() => setDetails(true)}>View full details</button>
+
       <div className={`lot-bid ${leading ? 'leading' : ''}`}>
         <div>
           <span className="small muted">{top ? `Highest of ${l.bids.length} bid${l.bids.length > 1 ? 's' : ''}` : 'No bids yet'}</span>
@@ -164,7 +185,73 @@ function LotCard({ l, me, now }) {
           {leading ? 'Raise my bid' : `Place bid (min ${money(min)})`}
         </button>
       )}
+
+      {details && (
+        <LotDetailsModal
+          l={l} farmer={farmer} top={top} me={me} unit={unit} now={now}
+          onClose={() => setDetails(false)}
+          onBid={() => { setDetails(false); setAmount(String(min)); setBidding(true); }}
+        />
+      )}
     </article>
+  );
+}
+
+function LotDetailsModal({ l, farmer, top, me, unit, now, onClose, onBid }) {
+  const bids = [...l.bids].sort((a, b) => b.amount - a.amount);
+  return (
+    <Modal
+      title={`${l.crop}${l.variety ? ` · ${l.variety}` : ''}`}
+      onClose={onClose}
+      footer={(
+        <>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-primary" onClick={onBid}>
+            {top?.buyerId === me.id ? 'Raise my bid' : 'Place a bid'}
+          </button>
+        </>
+      )}
+    >
+      <dl className="kv-grid">
+        <div className="kv"><dt>Crop</dt><dd>{l.crop}</dd></div>
+        <div className="kv"><dt>Variety</dt><dd>{l.variety || '—'}</dd></div>
+        <div className="kv"><dt>Grade</dt><dd>{l.grade}</dd></div>
+        <div className="kv"><dt>Quantity</dt><dd>{l.quantity} {unit}</dd></div>
+        <div className="kv"><dt>Base price</dt><dd>{money(l.basePrice)}/{unit}</dd></div>
+        <div className="kv"><dt>Highest bid</dt><dd>{top ? `${money(top.amount)}/${unit}` : 'No bids yet'}</dd></div>
+        <div className="kv"><dt>Available from</dt><dd>{l.availableFrom <= now ? 'Now' : dateStr(l.availableFrom)}</dd></div>
+        <div className="kv"><dt>Bidding ends</dt><dd>{dateTimeStr(l.endsAt)}</dd></div>
+        <div className="kv"><dt>Listed on</dt><dd>{dateStr(l.createdAt)}</dd></div>
+        <div className="kv"><dt>Farmer</dt><dd>{farmer?.name}</dd></div>
+        <div className="kv"><dt>Location</dt><dd>{farmer?.place ? `${farmer.place}, ` : ''}{farmer?.district}, {farmer?.state}</dd></div>
+      </dl>
+
+      {l.description && (
+        <div>
+          <p className="field-label">Notes from the farmer</p>
+          <p className="lot-desc">{l.description}</p>
+        </div>
+      )}
+
+      <div className="bids">
+        <p className="field-label">{bids.length ? `Bid history · ${bids.length} bid${bids.length > 1 ? 's' : ''}` : 'Bid history'}</p>
+        {bids.length ? (
+          <ul>
+            {bids.map((b) => (
+              <li key={b.id}>
+                <span>
+                  <strong>{money(b.amount)}</strong>/{unit}
+                  <span className="muted"> · {b.buyerId === me.id ? 'You' : 'Another buyer'}</span>
+                </span>
+                <span className="muted small">{dateTimeStr(b.at)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted small">No bids placed yet — be the first.</p>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -207,6 +294,81 @@ function MyBids({ lots, me, now }) {
                 {' '}· Lot value {money(accepted.amount * l.quantity)}
               </p>
             )}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function WonLots({ lots }) {
+  if (!lots.length) {
+    return <div className="card empty">No pending purchases — accepted bids will show up here so you can complete the purchase.</div>;
+  }
+
+  const rows = [...lots].sort((a, b) => (b.soldAt || 0) - (a.soldAt || 0));
+
+  return (
+    <div className="stack">
+      {rows.map((l) => {
+        const farmer = userById(l.farmerId);
+        const accepted = l.bids.find((b) => b.id === l.acceptedBidId);
+        const unit = l.unit.toLowerCase();
+        return (
+          <article key={l.id} className="card listing-row">
+            <div className="listing-title">
+              <h3>{l.crop}{l.variety && <small> · {l.variety}</small>} <span className="muted small">— {l.quantity} {unit}</span></h3>
+              <StatusBadge status="purchase-pending" />
+            </div>
+            <p className="meta">
+              Won at {money(accepted.amount)}/{unit} · Lot value <strong>{money(accepted.amount * l.quantity)}</strong> ·
+              {' '}{l.grade} · Sold {dateStr(l.soldAt)}
+            </p>
+            <p className="highlight ok">
+              🎉 Contact <strong>{farmer?.name}</strong> — 📞 {farmer?.phone} · {farmer?.place ? `${farmer.place}, ` : ''}{farmer?.district}, {farmer?.state}
+            </p>
+            <div className="row-actions">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => confirm(
+                  `Confirm you've completed the purchase of ${l.quantity} ${unit} of ${l.crop} from ${farmer?.name} for `
+                  + `${money(accepted.amount * l.quantity)}?`,
+                ) && confirmPurchase(l.id)}
+              >
+                Confirm purchase
+              </button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function PurchaseHistory({ lots }) {
+  if (!lots.length) {
+    return <div className="card empty">No completed purchases yet — confirmed purchases from "Won lots" will show up here.</div>;
+  }
+
+  const rows = [...lots].sort((a, b) => (b.purchaseConfirmedAt || 0) - (a.purchaseConfirmedAt || 0));
+
+  return (
+    <div className="stack">
+      {rows.map((l) => {
+        const farmer = userById(l.farmerId);
+        const accepted = l.bids.find((b) => b.id === l.acceptedBidId);
+        const unit = l.unit.toLowerCase();
+        return (
+          <article key={l.id} className="card listing-row">
+            <div className="listing-title">
+              <h3>{l.crop}{l.variety && <small> · {l.variety}</small>} <span className="muted small">— {l.quantity} {unit}</span></h3>
+              <StatusBadge status="purchase-done" />
+            </div>
+            <p className="meta">
+              Bought at {money(accepted.amount)}/{unit} · Lot value <strong>{money(accepted.amount * l.quantity)}</strong> ·
+              {' '}{l.grade} · From <strong>{farmer?.name}</strong>, {farmer?.district}, {farmer?.state}
+            </p>
+            <p className="muted small">Purchase confirmed on {dateStr(l.purchaseConfirmedAt)}.</p>
           </article>
         );
       })}
