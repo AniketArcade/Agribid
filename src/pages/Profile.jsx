@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Field from '../components/Field';
 import LandFields from '../components/LandFields';
-import { logout, resetDemo, updateUser, useApp } from '../lib/store';
+import { logout, updateUser, useApp } from '../lib/store';
 import { CROPS, STATES } from '../lib/constants';
 import { dateStr, initials } from '../lib/format';
 
@@ -35,17 +35,6 @@ export default function Profile() {
 
       <section className="card danger-zone">
         <button className="btn btn-ghost" onClick={() => { logout(); navigate('/'); }}>Log out</button>
-        <button
-          className="link-btn muted"
-          onClick={() => {
-            if (confirm('Reset all prototype data (users, listings, bids) to the demo seed?')) {
-              resetDemo();
-              navigate('/');
-            }
-          }}
-        >
-          Reset demo data
-        </button>
       </section>
     </div>
   );
@@ -151,16 +140,22 @@ function PaymentDetailsForm({ me, onDone }) {
     upiId: me.upiId || '',
   });
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const [error, setError] = useState('');
 
-  function save(e) {
+  async function save(e) {
     e.preventDefault();
-    updateUser(me.id, f);
-    onDone();
+    try {
+      await updateUser(me.id, f);
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   return (
     <form className="card form" onSubmit={save}>
       <h2>Payment details</h2>
+      {error && <p className="alert">{error}</p>}
       <div className="grid-2">
         <Field label="Account holder name" value={f.accountHolder} onChange={set('accountHolder')} />
         <Field label="Bank name" value={f.bankName} onChange={set('bankName')} />
@@ -181,18 +176,25 @@ function PaymentDetailsForm({ me, onDone }) {
 function EditForm({ me, onDone }) {
   const [f, setF] = useState({ ...me, interests: me.interests || [], lands: me.lands || [] });
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const [error, setError] = useState('');
 
-  function save(e) {
+  async function save(e) {
     e.preventDefault();
     const { id, role, password, createdAt, ...patch } = f;
     if (role === 'farmer') patch.lands = f.lands.map((l) => ({ ...l, acres: Number(l.acres) }));
-    updateUser(me.id, patch);
-    onDone();
+    else delete patch.lands;
+    try {
+      await updateUser(me.id, patch);
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   return (
     <form className="card form" onSubmit={save}>
       <h2>Edit profile</h2>
+      {error && <p className="alert">{error}</p>}
       <div className="grid-2">
         <Field label="Full name" value={f.name || ''} onChange={set('name')} required />
         {me.role === 'buyer'

@@ -112,7 +112,7 @@ function AwaitingRow({ l }) {
               className="btn btn-primary btn-sm"
               onClick={() => confirm(
                 `Approve the highest bid of ${money(top.amount)}/${unit} (${money(top.amount * l.quantity)} total) and mark this lot sold?`,
-              ) && acceptBid(l.id, top.id)}
+              ) && acceptBid(l.id, top.id).catch((err) => alert(err.message))}
             >
               Approve winning bid
             </button>
@@ -124,7 +124,8 @@ function AwaitingRow({ l }) {
           <div className="row-actions">
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => confirm('Withdraw this listing since no bids were received?') && cancelListing(l.id)}
+              onClick={() => confirm('Withdraw this listing since no bids were received?')
+                && cancelListing(l.id).catch((err) => alert(err.message))}
             >
               Withdraw
             </button>
@@ -158,11 +159,15 @@ function PendingRow({ l }) {
         </select>
         <button
           className="btn btn-outline btn-sm"
-          onClick={() => confirm('Reject and withdraw this listing?') && cancelListing(l.id)}
+          onClick={() => confirm('Reject and withdraw this listing?')
+            && cancelListing(l.id).catch((err) => alert(err.message))}
         >
           Reject
         </button>
-        <button className="btn btn-primary btn-sm" disabled={!grade} onClick={() => approveListing(l.id, grade)}>
+        <button
+          className="btn btn-primary btn-sm" disabled={!grade}
+          onClick={() => approveListing(l.id, grade).catch((err) => alert(err.message))}
+        >
           Approve & go live
         </button>
       </div>

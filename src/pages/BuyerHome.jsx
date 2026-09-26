@@ -117,7 +117,7 @@ function LotCard({ l, me, now }) {
   const unit = l.unit.toLowerCase();
   const endingSoon = l.endsAt - now < 12 * 3600 * 1000;
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const value = Number(amount);
     const reference = top ? top.amount : Number(l.basePrice);
@@ -127,7 +127,7 @@ function LotCard({ l, me, now }) {
       + `Lot total would be ${money(value * l.quantity)}. Place this bid?`,
     )) return;
     try {
-      placeBid(l.id, me.id, value);
+      await placeBid(l.id, me.id, value);
       setBidding(false);
       setAmount('');
       setError('');
@@ -333,7 +333,7 @@ function WonLots({ lots }) {
                 onClick={() => confirm(
                   `Confirm you've completed the purchase of ${l.quantity} ${unit} of ${l.crop} from ${farmer?.name} for `
                   + `${money(accepted.amount * l.quantity)}?`,
-                ) && confirmPurchase(l.id)}
+                ) && confirmPurchase(l.id).catch((err) => alert(err.message))}
               >
                 Confirm purchase
               </button>

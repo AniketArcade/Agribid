@@ -29,12 +29,20 @@ export default function AuthorityPricing() {
 
 function PriceRow({ crop, price }) {
   const [value, setValue] = useState(price ?? '');
+  const [saving, setSaving] = useState(false);
   const dirty = Number(value) !== Number(price || 0);
 
-  function save(e) {
+  async function save(e) {
     e.preventDefault();
     if (!(Number(value) > 0)) return;
-    setCropPrice(crop, value);
+    setSaving(true);
+    try {
+      await setCropPrice(crop, value);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -51,7 +59,9 @@ function PriceRow({ crop, price }) {
           onChange={(e) => setValue(e.target.value)}
           placeholder="₹ per quintal"
         />
-        <button className="btn btn-primary btn-sm" disabled={!dirty || !(Number(value) > 0)}>Save</button>
+        <button className="btn btn-primary btn-sm" disabled={saving || !dirty || !(Number(value) > 0)}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
     </form>
   );

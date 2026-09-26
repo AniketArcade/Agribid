@@ -17,29 +17,11 @@ export const UNITS = ['Quintal', 'Tonne', 'Kg'];
 
 export const GRADES = ['Grade A', 'Grade B', 'Grade C'];
 
-// Authority-fixed base price, ₹ per quintal. Farmers cannot set their own — 'Other' crops
-// have no fixed price yet, so listings for them start at 0 until an authority sets one.
-export const MSP = {
-  Wheat: 2275,
-  'Paddy (Rice)': 2183,
-  Maize: 2090,
-  Bajra: 2500,
-  Jowar: 3180,
-  Soybean: 4600,
-  Cotton: 7121,
-  Sugarcane: 315,
-  Mustard: 5650,
-  Groundnut: 6377,
-  'Chana (Gram)': 5440,
-  'Tur (Arhar)': 7000,
-  Moong: 8558,
-  Urad: 6950,
-  Onion: 1200,
-  Potato: 800,
-  Tomato: 700,
-};
+// Authority-fixed base prices now live in the crop_prices table (see
+// supabase/migrations/0001_schema.sql, seeded with the same starting values
+// this used to hold) — farmers cannot set their own here either.
 
-// Converts a per-quintal MSP into a price for the listing's chosen unit.
+// Converts a per-quintal price into a price for the listing's chosen unit.
 export const UNIT_FACTOR = { Quintal: 1, Tonne: 10, Kg: 0.01 };
 
 // Minimum step (₹ per unit) a new bid must beat the current highest bid by.

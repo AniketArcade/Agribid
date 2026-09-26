@@ -90,21 +90,27 @@ function SellForm({ farmer, prices, onCreated }) {
   const basePrice = pricePerQuintal ? Math.round(pricePerQuintal * UNIT_FACTOR[f.unit]) : 0;
   const total = Number(f.quantity) * basePrice;
 
-  function submit(e) {
+  const [error, setError] = useState('');
+
+  async function submit(e) {
     e.preventDefault();
     const start = new Date(`${f.availableFrom}T00:00`).getTime();
-    createListing(farmer.id, {
-      crop: f.crop === 'Other' ? f.customCrop.trim() : f.crop,
-      variety: f.variety.trim(),
-      quantity: Number(f.quantity),
-      unit: f.unit,
-      basePrice,
-      availableFrom: start,
-      durationDays: Number(f.durationDays),
-      description: f.description.trim(),
-    });
-    setF(EMPTY);
-    onCreated();
+    try {
+      await createListing(farmer.id, {
+        crop: f.crop === 'Other' ? f.customCrop.trim() : f.crop,
+        variety: f.variety.trim(),
+        quantity: Number(f.quantity),
+        unit: f.unit,
+        basePrice,
+        availableFrom: start,
+        durationDays: Number(f.durationDays),
+        description: f.description.trim(),
+      });
+      setF(EMPTY);
+      onCreated();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   return (
@@ -143,6 +149,7 @@ function SellForm({ farmer, prices, onCreated }) {
       <Field label="Notes for buyers" as="textarea" rows={3} value={f.description} onChange={set('description')}
         placeholder="Moisture, storage, packing, pickup details…" />
 
+      {error && <p className="alert">{error}</p>}
       <div className="sell-foot">
         <span className="muted">
           {total > 0 ? <>Minimum lot value: <strong>{money(total)}</strong></> : 'Select a crop and quantity to see lot value.'}
@@ -173,7 +180,10 @@ function PendingListing({ l }) {
         </p>
         <p className="muted small">Waiting for the authority to review and grade this lot before it goes live.</p>
       </div>
-      <button className="link-btn danger" onClick={() => confirm('Withdraw this listing?') && cancelListing(l.id)}>
+      <button
+        className="link-btn danger"
+        onClick={() => confirm('Withdraw this listing?') && cancelListing(l.id).catch((err) => alert(err.message))}
+      >
         Withdraw listing
       </button>
     </article>
@@ -238,7 +248,7 @@ function FarmerListing({ l, now }) {
                       className={`btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline'}`}
                       onClick={() => {
                         if (confirm(`Accept ${money(b.amount)}/${l.unit.toLowerCase()} from ${buyer?.traderName}? This closes bidding.`)) {
-                          acceptBid(l.id, b.id);
+                          acceptBid(l.id, b.id).catch((err) => alert(err.message));
                         }
                       }}
                     >
@@ -257,7 +267,10 @@ function FarmerListing({ l, now }) {
       )}
 
       {decidable && (
-        <button className="link-btn danger" onClick={() => confirm('Withdraw this listing?') && cancelListing(l.id)}>
+        <button
+          className="link-btn danger"
+          onClick={() => confirm('Withdraw this listing?') && cancelListing(l.id).catch((err) => alert(err.message))}
+        >
           Withdraw listing
         </button>
       )}

@@ -35,13 +35,16 @@ export default function AuthPage({ role, mode }) {
       interests: f.interests.includes(crop) ? f.interests.filter((c) => c !== crop) : [...f.interests, crop],
     }));
 
-  function submit(e) {
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(e) {
     e.preventDefault();
     setError('');
     try {
       if (!isSignup) {
+        setSubmitting(true);
+        await login({ role, phone: form.phone, password: form.password });
         submitted.current = true;
-        login({ role, phone: form.phone, password: form.password });
         navigate(`/${role}`);
         return;
       }
@@ -51,19 +54,22 @@ export default function AuthPage({ role, mode }) {
       if (form.password.length < 6) throw new Error('Password must be at least 6 characters.');
       if (form.password !== form.confirm) throw new Error('Passwords do not match.');
 
-      submitted.current = true;
+      setSubmitting(true);
       if (role === 'farmer') {
         const { phone, password, name, place, state, district } = form;
-        signup({ role, phone, password, name, place, state, district });
+        await signup({ role, phone, password, name, place, state, district });
+        submitted.current = true;
         navigate('/farmer/onboarding');
       } else {
         const { phone, password, name, traderName, location, state, district, license, interests } = form;
-        signup({ role, phone, password, name, traderName, location, state, district, license, interests });
+        await signup({ role, phone, password, name, traderName, location, state, district, license, interests });
+        submitted.current = true;
         navigate('/buyer');
       }
     } catch (err) {
-      submitted.current = false;
       setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -149,8 +155,8 @@ export default function AuthPage({ role, mode }) {
 
           {error && <p className="alert">{error}</p>}
 
-          <button className="btn btn-primary btn-block">
-            {isSignup ? (role === 'farmer' ? 'Continue' : 'Create account') : 'Log in'}
+          <button className="btn btn-primary btn-block" disabled={submitting}>
+            {submitting ? 'Please wait…' : isSignup ? (role === 'farmer' ? 'Continue' : 'Create account') : 'Log in'}
           </button>
         </form>
 
