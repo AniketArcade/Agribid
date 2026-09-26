@@ -85,6 +85,14 @@ function mapProfile(p, { lands, payment } = {}) {
 let loggedOut = false;
 let currentUserId = null;
 let stopRealtime = null;
+// The auth-state-change listener below fires its own refreshData() as soon as a
+// session exists, racing the explicit refreshData() that signup()/login() call
+// once they're done (e.g. after the profile row insert). Network calls can
+// resolve out of order, so a stale call could overwrite fresh data (e.g. see
+// no profile row yet and publish me: null after the correct call already
+// published it). This sequence number makes only the most-recently-started
+// refreshData() call allowed to publish.
+let refreshSeq = 0;
 
 let snapshot = { session: undefined, me: null, db: { users: [], listings: [], prices: {} }, loading: true };
 const listeners = new Set();
@@ -100,8 +108,9 @@ export function useApp() {
 }
 
 async function refreshData(session) {
+  const seq = ++refreshSeq;
   if (!session) {
-    publish({ me: null, db: { users: [], listings: [], prices: {} }, loading: false });
+    if (seq === refreshSeq) publish({ me: null, db: { users: [], listings: [], prices: {} }, loading: false });
     return;
   }
   const uid = session.user.id;
@@ -134,7 +143,7 @@ async function refreshData(session) {
   (prices || []).forEach((row) => { priceMap[row.crop] = Number(row.price_per_quintal); });
 
   const me = users.find((u) => u.id === uid) || null;
-  publish({ me, db: { users, listings: listingsMapped, prices: priceMap }, loading: false });
+  if (seq === refreshSeq) publish({ me, db: { users, listings: listingsMapped, prices: priceMap }, loading: false });
 }
 
 supabase.auth.onAuthStateChange((_event, session) => {

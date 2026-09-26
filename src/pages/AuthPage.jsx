@@ -20,6 +20,7 @@ export default function AuthPage({ role, mode }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({ phone: '', password: '', confirm: '', place: '', ...EMPTY_BUYER });
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   // Set once this form logs someone in, so the "already logged in" redirect below
   // doesn't race the navigate() call in submit().
   const submitted = useRef(false);
@@ -34,8 +35,6 @@ export default function AuthPage({ role, mode }) {
       ...f,
       interests: f.interests.includes(crop) ? f.interests.filter((c) => c !== crop) : [...f.interests, crop],
     }));
-
-  const [submitting, setSubmitting] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
